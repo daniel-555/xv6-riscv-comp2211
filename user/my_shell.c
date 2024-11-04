@@ -1,5 +1,6 @@
 #include "kernel/types.h"
 #include "user/user.h"
+#include "kernel/fs.h"
 #include "kernel/fcntl.h"
 
 /* Read a line of characters from stdin. */
@@ -21,7 +22,6 @@ int getcmd(char *buf, int nbuf)
 */
 __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
 {
-
   /* Useful data structures and flags. */
   char *arguments[10];
   int numargs = 0;
@@ -122,6 +122,8 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
   if (strcmp(arguments[0], "cd") == 0)
   {
     // ##### Place your code here.
+    write(pcp[1], arguments[1], strlen(arguments[1]));
+    exit(2);
   }
   else
   {
@@ -156,18 +158,31 @@ int main(void)
   {
     if (fork() == 0)
     {
+      close(pcp[0]);
       run_command(buf, 100, pcp);
+      close(pcp[1]);
     }
     else
     {
-      wait(0);
+      /*
+        Check if run_command found this is
+        a CD command and run it if required.
+      */
+      int child_status;
+      // ##### Place your code here
+      close(pcp[1]);
+      wait(&child_status);
+      if (child_status == 2)
+      {
+        char dir[DIRSIZ] = "";
+        read(pcp[0], dir, DIRSIZ);
+        printf("%s\n", dir);
+        if (chdir(dir) < 0)
+        {
+          fprintf(2, "cannot cd %s\n", dir);
+        }
+      }
     }
-    /*
-      Check if run_command found this is
-      a CD command and run it if required.
-    */
-    // int child_status;
-    // ##### Place your code here
   }
   exit(0);
 }
