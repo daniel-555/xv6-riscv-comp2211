@@ -62,7 +62,13 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
     // Left Redirect
     case '<':
       redirection_left = 1;
-      buf[i] = '\0'; // Terminate last argument
+      // Terminate last argument if needed
+      if (ws == 0)
+      {
+        buf[i] = '\0';
+        arguments[numargs++] = &buf[we];
+        ws = 1;
+      }
 
       while (buf[++i] == ' ' || buf[i] == '\t')
         ; // Skip over whitespace to find the start of the filename
@@ -79,7 +85,13 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
     // Right Redirect
     case '>':
       redirection_right = 1;
-      buf[i] = '\0'; // Terminate last argument
+      // Terminate last argument if needed
+      if (ws == 0)
+      {
+        buf[i] = '\0';
+        arguments[numargs++] = &buf[we];
+        ws = 1;
+      }
 
       while (buf[++i] == ' ' || buf[i] == '\t')
         ; // Skip over whitespace to find the start of the filename
