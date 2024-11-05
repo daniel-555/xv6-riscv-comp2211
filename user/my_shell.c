@@ -29,8 +29,8 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
 
   int redirection_left = 0;
   int redirection_right = 0;
-  // char *file_name_l = 0;
-  // char *file_name_r = 0;
+  char *file_name_l = 0;
+  char *file_name_r = 0;
 
   // int p[2];
   int pipe_cmd = 0;
@@ -59,6 +59,40 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
       }
       break;
 
+    // Left Redirect
+    case '<':
+      redirection_left = 1;
+      buf[i] = '\0'; // Terminate last argument
+
+      while (buf[++i] == ' ' || buf[i] == '\t')
+        ; // Skip over whitespace to find the start of the filename
+
+      file_name_l = &buf[i];
+
+      while (buf[i] != ' ' && buf[i] != '\n' && buf[i] != '\t' && buf[i] != '\0')
+      {
+        i++; // Find the end of the file name
+      }
+      buf[i] = '\0';
+      break;
+
+    // Right Redirect
+    case '>':
+      redirection_right = 1;
+      buf[i] = '\0'; // Terminate last argument
+
+      while (buf[++i] == ' ' || buf[i] == '\t')
+        ; // Skip over whitespace to find the start of the filename
+
+      file_name_r = &buf[i];
+
+      while (buf[i] != ' ' && buf[i] != '\n' && buf[i] != '\t' && buf[i] != '\0')
+      {
+        i++; // Find the end of the file name
+      }
+      buf[i] = '\0';
+      break;
+
     // Character
     default:
       if (ws == 1)
@@ -69,22 +103,20 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
       break;
     }
 
-    if (!(redirection_left || redirection_right))
+    if (redirection_left || redirection_right)
     {
-      /* No redirection, continue parsing command. */
-      continue;
-      // Place your code here.
-    }
-    else
-    {
-      /* Redirection command. Capture the file names. */
-
-      // ##### Place your code here.
+      break;
     }
   }
 
   arguments[numargs] = 0;
 
+  int j = 0;
+  while (arguments[j])
+  {
+    printf("%d: %s\n", j, arguments[j]);
+    j++;
+  }
   /*
     Sequence command. Continue this command in a new process.
     Wait for it to complete and execute the command following ';'.
@@ -106,10 +138,18 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
   if (redirection_left)
   {
     // ##### Place your code here.
+    // Set file_name_l as stdin
+    printf("file: %s\n", file_name_l);
+    close(0);
+    open(file_name_l, O_RDONLY);
   }
   if (redirection_right)
   {
     // ##### Place your code here.
+    // Set file_name_r as stdout
+    printf("file: %s\n", file_name_r);
+    close(1);
+    open(file_name_r, O_CREATE | O_WRONLY | O_TRUNC);
   }
 
   /* Parsing done. Execute the command. */
