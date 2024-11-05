@@ -11,8 +11,6 @@ int getcmd(char *buf, int nbuf)
   fprintf(2, ">>> ");
   memset(buf, 0, nbuf); // Reset the buffer after each command
   read(0, buf, nbuf);
-  if (buf[0] == 0)
-    return -1;
   return 0;
 }
 
@@ -52,6 +50,7 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
     {
     case ' ':
     case '\n':
+    case '\t':
       if (ws == 0)
       {
         buf[i] = '\0';
@@ -138,7 +137,11 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
     else
     {
       // ##### Place your code here.
-      exec(arguments[0], arguments);
+      if (exec(arguments[0], arguments) < 0)
+      {
+        fprintf(2, "exec %s failed\n", arguments[0]);
+        exit(1);
+      }
     }
   }
 
@@ -158,9 +161,7 @@ int main(void)
   {
     if (fork() == 0)
     {
-      close(pcp[0]);
       run_command(buf, 100, pcp);
-      close(pcp[1]);
     }
     else
     {
@@ -170,13 +171,12 @@ int main(void)
       */
       int child_status;
       // ##### Place your code here
-      close(pcp[1]);
+
       wait(&child_status);
       if (child_status == 2)
       {
         char dir[DIRSIZ] = "";
         read(pcp[0], dir, DIRSIZ);
-        printf("%s\n", dir);
         if (chdir(dir) < 0)
         {
           fprintf(2, "cannot cd %s\n", dir);
