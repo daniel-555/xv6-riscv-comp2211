@@ -32,7 +32,7 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
   char *file_name_l = 0;
   char *file_name_r = 0;
 
-  // int p[2];
+  int p[2];
   int pipe_cmd = 0;
 
   int sequence_cmd = 0;
@@ -105,6 +105,17 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
       buf[i] = '\0';
       break;
 
+    case '|':
+      // Terminate last argument if needed
+      if (ws == 0)
+      {
+        buf[i] = '\0';
+        arguments[numargs++] = &buf[we];
+        ws = 1;
+      }
+      pipe_cmd = i + 1;
+      break;
+
     // Character
     default:
       if (ws == 1)
@@ -115,7 +126,7 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
       break;
     }
 
-    if (redirection_left || redirection_right)
+    if (redirection_left || redirection_right || pipe_cmd)
     {
       break;
     }
@@ -123,12 +134,6 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
 
   arguments[numargs] = 0;
 
-  int j = 0;
-  while (arguments[j])
-  {
-    printf("%d: %s\n", j, arguments[j]);
-    j++;
-  }
   /*
     Sequence command. Continue this command in a new process.
     Wait for it to complete and execute the command following ';'.
@@ -151,7 +156,6 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
   {
     // ##### Place your code here.
     // Set file_name_l as stdin
-    printf("file: %s\n", file_name_l);
     close(0);
     open(file_name_l, O_RDONLY);
   }
@@ -159,7 +163,6 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
   {
     // ##### Place your code here.
     // Set file_name_r as stdout
-    printf("file: %s\n", file_name_r);
     close(1);
     open(file_name_r, O_CREATE | O_WRONLY | O_TRUNC);
   }
@@ -185,14 +188,51 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
     if (pipe_cmd)
     {
       // ##### Place your code here.
+      pipe(p);
+
+      // Left Hand Side
+      if (fork() == 0)
+      {
+        close(1);
+        dup(p[1]);
+        close(p[0]);
+        close(p[1]);
+        if (fork() == 0)
+        {
+          exec(arguments[0], arguments);
+
+          fprintf(2, "exec %s failed\n", arguments[0]);
+          exit(1);
+        }
+        wait(0);
+      }
+
+      // Right Hand Side
+      if (fork() == 0)
+      {
+        close(0);
+        dup(p[0]);
+        close(p[0]);
+        close(p[1]);
+        run_command(buf + pipe_cmd, nbuf - pipe_cmd, pcp);
+        exit(0);
+      }
+
+      wait(0);
     }
     else
     {
       // ##### Place your code here.
-      if (exec(arguments[0], arguments) < 0)
+      if (fork() == 0)
       {
+        exec(arguments[0], arguments);
+
         fprintf(2, "exec %s failed\n", arguments[0]);
         exit(1);
+      }
+      else
+      {
+        wait(0);
       }
     }
   }
