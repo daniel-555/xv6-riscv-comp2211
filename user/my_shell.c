@@ -116,6 +116,17 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
       pipe_cmd = i + 1;
       break;
 
+    case ';':
+      if (ws == 0)
+      {
+        buf[i] = '\0';
+        arguments[numargs++] = &buf[we];
+        ws = 1;
+      }
+      arguments[numargs++] = 0;
+      sequence_cmd = numargs;
+      break;
+
     // Character
     default:
       if (ws == 1)
@@ -140,11 +151,18 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
   */
   if (sequence_cmd)
   {
-    sequence_cmd = 0;
     if (fork() != 0)
     {
       wait(0);
       // ##### Place your code here.
+      if (fork() == 0)
+      {
+        exec(arguments[sequence_cmd], arguments + sequence_cmd);
+
+        fprintf(2, "exec %s failed\n", arguments[0]);
+        exit(1);
+      }
+      exit(0);
     }
   }
 
@@ -191,20 +209,17 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
       pipe(p);
 
       // Left Hand Side
+
       if (fork() == 0)
       {
         close(1);
         dup(p[1]);
         close(p[0]);
         close(p[1]);
-        if (fork() == 0)
-        {
-          exec(arguments[0], arguments);
+        exec(arguments[0], arguments);
 
-          fprintf(2, "exec %s failed\n", arguments[0]);
-          exit(1);
-        }
-        wait(0);
+        fprintf(2, "exec %s failed\n", arguments[0]);
+        exit(1);
       }
 
       // Right Hand Side
@@ -215,9 +230,12 @@ __attribute__((noreturn)) void run_command(char *buf, int nbuf, int *pcp)
         close(p[0]);
         close(p[1]);
         run_command(buf + pipe_cmd, nbuf - pipe_cmd, pcp);
-        exit(0);
       }
 
+      close(p[0]);
+      close(p[1]);
+
+      wait(0);
       wait(0);
     }
     else
